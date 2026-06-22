@@ -1,0 +1,50 @@
+# ── Dependencies ──────────────────────────────────
+node_modules/
+
+# ── Build outputs ─────────────────────────────────
+dist/
+dist-ssr/
+out/
+release/
+
+# ── Logs ──────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Local user data (personal, NEVER commit) ──────
+# Contains your workspace path (e.g. D:\YourName\Documents\Studio One\Songs)
+workspace-config.json
+# Large project metadata cache (~300 KB of personal project info)
+workspace-cache.json
+
+# ── Electron packager/builder artifacts ───────────
+out/
+release/
+*.exe
+*.dmg
+*.AppImage
+*.snap
+*.deb
+*.rpm
+
+# ── OS / Editor artifacts ─────────────────────────
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.local
+
+# ── Environment secrets ───────────────────────────
+.env
+.env.*
+!.env.example

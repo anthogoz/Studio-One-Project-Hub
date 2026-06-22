@@ -1,0 +1,176 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   # triggers on tags like v1.0.0, v1.2.3
+
+permissions:
+  contents: write  # needed to create GitHub Releases
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Windows build → produces .exe installer (NSIS)
+  # ─────────────────────────────────────────────
+  build-windows:
+    name: Build Windows (.exe)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Vite frontend
+        run: npm run build
+
+      - name: Package Electron app (Windows)
+        run: npm run electron:build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release/*.exe
+          retention-days: 5
+
+  # ─────────────────────────────────────────────
+  # macOS build → produces .dmg (Intel + Apple Silicon)
+  # ─────────────────────────────────────────────
+  build-macos:
+    name: Build macOS (.dmg)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Vite frontend
+        run: npm run build
+
+      - name: Package Electron app (macOS)
+        run: npm run electron:build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: release/*.dmg
+          retention-days: 5
+
+  # ─────────────────────────────────────────────
+  # Linux build → produces .AppImage
+  # ─────────────────────────────────────────────
+  build-linux:
+    name: Build Linux (.AppImage)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Vite frontend
+        run: npm run build
+
+      - name: Package Electron app (Linux)
+        run: npm run electron:build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: release/*.AppImage
+          retention-days: 5
+
+  # ─────────────────────────────────────────────
+  # Create GitHub Release with all platform binaries
+  # ─────────────────────────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts/windows
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: artifacts/macos
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+          path: artifacts/linux
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Studio One Project Hub ${{ github.ref_name }}"
+          body: |
+            ## 🌀 Studio One Project Hub ${{ github.ref_name }}
+
+            A powerful companion app for **PreSonus Studio One** — analyze, visualize, and maintain your music projects directly from a desktop UI.
+
+            ### 📦 Downloads
+            | Platform | File | Notes |
+            |----------|------|-------|
+            | 🪟 Windows | `.exe` installer | Windows 10/11 x64 |
+            | 🍎 macOS | `.dmg` | Intel + Apple Silicon (arm64) |
+            | 🐧 Linux | `.AppImage` | x64 |
+
+            ### 📋 What's included
+            - 📊 Dashboard — metadata, tracks, audio clips overview
+            - 🎛️ Mixer Console — inserts, sends, routing
+            - 🔗 Signal Flow Map — visual routing graph
+            - 📁 Plugin Doctor — VST2→VST3 remapping
+            - ❄️ Freeze & Latency Advisor — CPU/latency scoring
+            - 🔍 Missing Media Relinker — repair broken file paths
+            - 🎼 Sound Variations Editor — articulation maps + Cubase importer
+            - 🕐 Version History — snapshot diffing
+            - 🎨 Session Colorizer — auto color-coding rules
+            - ...and more
+
+            > **Note:** On first launch, the app will ask you to set your Studio One Songs folder.
+          files: |
+            artifacts/windows/*.exe
+            artifacts/macos/*.dmg
+            artifacts/linux/*.AppImage
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
