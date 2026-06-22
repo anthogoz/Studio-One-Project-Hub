@@ -2,9 +2,9 @@
 
 > A powerful desktop companion app for **PreSonus Studio One** — analyze, visualize, clean, and maintain your music projects without ever opening the DAW.
 
-![GitHub release](https://img.shields.io/github/v/release/Lnkhey/Studio-One-Project-Hub?style=flat-square)
+![GitHub release](https://img.shields.io/github/v/release/anthogoz/Studio-One-Project-Hub?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square)
-![License](https://img.shields.io/github/license/Lnkhey/Studio-One-Project-Hub?style=flat-square)
+![License](https://img.shields.io/github/license/anthogoz/Studio-One-Project-Hub?style=flat-square)
 
 ---
 
@@ -33,7 +33,7 @@
 
 ## 📦 Download
 
-Go to the [**Releases**](https://github.com/Lnkhey/Studio-One-Project-Hub/releases) page and grab the latest binary for your OS:
+Go to the [**Releases**](https://github.com/anthogoz/Studio-One-Project-Hub/releases) page and grab the latest binary for your OS:
 
 - **Windows** — `.exe` installer (NSIS, Windows 10/11 x64)
 - **macOS** — `.dmg` (Intel + Apple Silicon)
@@ -44,7 +44,7 @@ Go to the [**Releases**](https://github.com/Lnkhey/Studio-One-Project-Hub/releas
 ## 🚀 Getting Started
 
 ### 1. Install
-Download and run the installer for your platform from the [Releases](https://github.com/Lnkhey/Studio-One-Project-Hub/releases) page.
+Download and run the installer for your platform from the [Releases](https://github.com/anthogoz/Studio-One-Project-Hub/releases) page.
 
 ### 2. Set Your Workspace
 On first launch, you'll be prompted to set your **Studio One Songs folder** — this is the root directory where all your `.song` project folders are stored (e.g. `Documents\Studio One\Songs`).
@@ -71,7 +71,7 @@ Click on any project in the browser to load it. All analysis happens **locally**
 
 ### Setup
 ```bash
-git clone https://github.com/Lnkhey/Studio-One-Project-Hub.git
+git clone https://github.com/anthogoz/Studio-One-Project-Hub.git
 cd Studio-One-Project-Hub
 npm install
 ```
@@ -127,7 +127,7 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 ## 📝 License
 
-[MIT](LICENSE) — © 2024-2025 Lnkhey
+[MIT](LICENSE) — © 2024-2025 anthogoz
 
 ---
 
