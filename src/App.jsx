@@ -5,7 +5,6 @@ import MixerConsole from './components/MixerConsole';
 import PerformanceHub from './components/PerformanceHub';
 import SessionColorizer from './components/SessionColorizer';
 import ProjectHistory from './components/ProjectHistory';
-import Utilities from './components/Utilities';
 import WorkspaceAudit from './components/WorkspaceAudit';
 import ProjectCompare from './components/ProjectCompare';
 import SignalFlowMap from './components/SignalFlowMap';
@@ -17,6 +16,12 @@ import VideoSyncAdvisor from './components/VideoSyncAdvisor';
 import FreezeAdvisor from './components/FreezeAdvisor';
 import MediaRelinker from './components/MediaRelinker';
 import SoundVariations from './components/SoundVariations';
+import TemplateGenerator from './components/TemplateGenerator';
+import VersionConverter from './components/VersionConverter';
+import SampleRateConverter from './components/SampleRateConverter';
+import ImpactPresetEditor from './components/ImpactPresetEditor';
+import SampleHealthAudit from './components/SampleHealthAudit';
+import ProjectUtilities from './components/ProjectUtilities';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -404,6 +409,7 @@ export default function App() {
         { id: 'colorizer', icon: '🎨', label: 'Auto Colorizer' },
         { id: 'vocalcopier', icon: '🧬', label: 'Vocal Chain Copier' },
         { id: 'soundvariations', icon: '🎼', label: 'Sound Variations' },
+        { id: 'impact_editor', icon: '🥁', label: 'Impact XT Editor' },
       ]
     },
     {
@@ -412,7 +418,16 @@ export default function App() {
         { id: 'cleaner', icon: '🧽', label: 'Session Cleaner' },
         { id: 'plugindoctor', icon: '📁', label: 'Plugin Doctor' },
         { id: 'relinker', icon: '🔍', label: 'Media Relinker' },
-        { id: 'utilities', icon: '⚙️', label: 'Utilities' },
+        { id: 'utilities', icon: '🛠️', label: 'Quick Utilities' },
+      ]
+    },
+    {
+      label: 'Format & Conversion',
+      items: [
+        { id: 'version_converter', icon: '🔄', label: 'Version Converter' },
+        { id: 'sample_rate_converter', icon: '📻', label: 'Sample Rate Converter' },
+        { id: 'sample_health_audit', icon: '🧬', label: 'Sample Health Audit' },
+        { id: 'template_generator', icon: '✨', label: 'Template Generator' },
       ]
     },
   ];
@@ -567,11 +582,19 @@ export default function App() {
             {activeTab === 'soundvariations' && (
               <SoundVariations />
             )}
+            {activeTab === 'impact_editor' && (
+              <ImpactPresetEditor parsedData={parsedData} />
+            )}
             {activeTab === 'cleaner' && (
               <ProjectCleaner
                 parsedData={parsedData}
                 projectDir={currentProject.dirPath}
                 songName={currentProject.songName}
+                songPath={currentProject.songPath}
+              />
+            )}
+            {activeTab === 'utilities' && (
+              <ProjectUtilities
                 songPath={currentProject.songPath}
               />
             )}
@@ -587,11 +610,26 @@ export default function App() {
                 projectDir={currentProject.dirPath}
               />
             )}
-            {activeTab === 'utilities' && (
-              <Utilities
-                parsedData={parsedData}
+            {activeTab === 'version_converter' && (
+              <VersionConverter
                 songPath={currentProject.songPath}
+              />
+            )}
+            {activeTab === 'sample_rate_converter' && (
+              <SampleRateConverter
+                songPath={currentProject.songPath}
+                parsedData={parsedData}
+                onReloadProject={() => handleProjectSelected(currentProject)}
+              />
+            )}
+            {activeTab === 'sample_health_audit' && (
+              <SampleHealthAudit parsedData={parsedData} />
+            )}
+            {activeTab === 'template_generator' && (
+              <TemplateGenerator
+                parsedData={parsedData}
                 songXmlDoc={songXmlDoc}
+                songPath={currentProject.songPath}
               />
             )}
           </div>

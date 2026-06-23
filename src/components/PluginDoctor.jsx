@@ -56,6 +56,8 @@ export default function PluginDoctor({ parsedData, songPath }) {
               format = 'Stock';
             } else if (plug.classID.startsWith('{565354')) {
               format = 'VST2';
+            } else if (plug.classID.toLowerCase().startsWith('{4155') || plug.classID.toLowerCase().startsWith('{4175')) {
+              format = 'Audio Unit (AU)';
             }
 
             map.set(key, {
@@ -189,6 +191,57 @@ export default function PluginDoctor({ parsedData, songPath }) {
     setMessage('Rule removed.');
   };
 
+  const handleAutoMapAU = () => {
+    setError('');
+    setMessage('');
+
+    const auPlugins = uniquePlugins.filter(p => p.format === 'Audio Unit (AU)');
+    if (auPlugins.length === 0) {
+      setError('No Audio Unit (AU) plugins found in the current project.');
+      return;
+    }
+
+    const newRules = [...rules];
+    let mappedCount = 0;
+
+    auPlugins.forEach(auPlug => {
+      if (newRules.some(r => r.sourceClassID === auPlug.classID)) return;
+
+      const clean = (name) => name
+        .toLowerCase()
+        .replace(/_x64|x64|\.64|_vst|vst/g, '')
+        .replace(/[^a-z0-9]/g, ' ')
+        .trim();
+
+      const cleanSrc = clean(auPlug.name);
+
+      const match = workspacePlugins.find(p => {
+        if (p.classID === auPlug.classID) return false;
+        const cleanDest = clean(p.name);
+        return (p.format === 'VST3' || p.format === 'VST2') && 
+               (cleanDest === cleanSrc || cleanDest.includes(cleanSrc) || cleanSrc.includes(cleanDest));
+      });
+
+      if (match) {
+        newRules.push({
+          sourceClassID: auPlug.classID,
+          sourceName: auPlug.name,
+          targetClassID: match.classID,
+          targetName: match.name,
+          sourceFormat: auPlug.format
+        });
+        mappedCount++;
+      }
+    });
+
+    if (mappedCount > 0) {
+      setRules(newRules);
+      setMessage(`Successfully auto-mapped ${mappedCount} Audio Unit (AU) plugin(s) to their VST equivalents in your workspace.`);
+    } else {
+      setError('Could not find any matching VST equivalents in your workspace database for the Audio Unit plugins.');
+    }
+  };
+
   const handleApplyMapping = async () => {
     if (rules.length === 0) {
       setError('Add at least one mapping rule before applying.');
@@ -285,8 +338,8 @@ export default function PluginDoctor({ parsedData, songPath }) {
                         borderRadius: '3px',
                         fontSize: '0.7rem',
                         fontWeight: 'bold',
-                        background: plug.format === 'VST2' ? 'rgba(255, 0, 127, 0.15)' : plug.format === 'VST3' ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255,255,255,0.05)',
-                        color: plug.format === 'VST2' ? 'var(--accent-pink)' : plug.format === 'VST3' ? 'var(--accent-cyan)' : 'var(--text-muted)'
+                        background: plug.format === 'VST2' ? 'rgba(255, 0, 127, 0.15)' : plug.format === 'VST3' ? 'rgba(0, 242, 254, 0.15)' : plug.format === 'Audio Unit (AU)' ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255,255,255,0.05)',
+                        color: plug.format === 'VST2' ? 'var(--accent-pink)' : plug.format === 'VST3' ? 'var(--accent-cyan)' : plug.format === 'Audio Unit (AU)' ? '#c084fc' : 'var(--text-muted)'
                       }}>
                         {plug.format}
                       </span>
@@ -484,9 +537,34 @@ export default function PluginDoctor({ parsedData, songPath }) {
 
           {/* Active Rules List */}
           <div className="glass-card">
-            <h3 style={{ fontSize: '1.1rem', color: 'white', marginBottom: '1rem', borderBottom: '1px solid var(--border-clean)', paddingBottom: '0.5rem' }}>
-              Active Mapping Rules ({rules.length})
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-clean)', paddingBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.1rem', color: 'white', margin: 0 }}>
+                Active Mapping Rules ({rules.length})
+              </h3>
+              {uniquePlugins.some(p => p.format === 'Audio Unit (AU)') && (
+                <button
+                  type="button"
+                  onClick={handleAutoMapAU}
+                  className="btn-secondary"
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.72rem',
+                    borderColor: '#a855f7',
+                    color: '#c084fc',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'rgba(168, 85, 247, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'transparent';
+                  }}
+                >
+                  🔮 Auto-Map AU to VST
+                </button>
+              )}
+            </div>
 
             {rules.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '1.5rem' }}>

@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip';
 import { fileURLToPath } from 'url';
 import os from 'os';
 import { exec } from 'child_process';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -461,7 +462,61 @@ app.get('/api/media-status', (req, res) => {
     }
   }
 
-  res.json({ filesOnDisk, filesInBackup });
+  // Gather all used media filenames across all versions
+  const usedMediaAcrossVersions = new Set();
+  try {
+    const songFiles = [];
+    const mainFiles = fs.readdirSync(projectDir);
+    mainFiles.forEach(f => {
+      if (f.endsWith('.song')) {
+        songFiles.push(path.join(projectDir, f));
+      }
+    });
+
+    const historyDir = path.join(projectDir, 'History');
+    if (fs.existsSync(historyDir)) {
+      const historyFiles = fs.readdirSync(historyDir);
+      historyFiles.forEach(f => {
+        if (f.endsWith('.song')) {
+          songFiles.push(path.join(historyDir, f));
+        }
+      });
+    }
+
+    songFiles.forEach(songPath => {
+      try {
+        const zip = new AdmZip(songPath);
+        const poolEntry = zip.getEntry('Song/mediapool.xml');
+        if (poolEntry) {
+          const xmlText = poolEntry.getData().toString('utf8');
+          const clipRegex = /<AudioClip[^>]*useCount="([^"]+)"[^>]*>([\s\S]*?)<\/AudioClip>/g;
+          let match;
+          while ((match = clipRegex.exec(xmlText)) !== null) {
+            const useCount = parseInt(match[1], 10);
+            if (useCount > 0) {
+              const inner = match[2];
+              const urlMatch = inner.match(/url="([^"]+)"/i);
+              if (urlMatch) {
+                const fileUrl = urlMatch[1];
+                const filename = fileUrl.split(/[/\\]/).pop().toLowerCase();
+                usedMediaAcrossVersions.add(filename);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // ignore zip reading errors for snapshots
+      }
+    });
+  } catch (err) {
+    console.error("Error gathering media references across versions:", err);
+  }
+
+  res.json({ 
+    filesOnDisk, 
+    filesInBackup, 
+    usedMediaAcrossVersions: Array.from(usedMediaAcrossVersions) 
+  });
 });
 
 // 4. Move unused files to a backup directory inside the project
@@ -624,6 +679,8 @@ app.get('/api/workspace-audit', (req, res) => {
       format = 'Stock';
     } else if (classID.startsWith('{565354')) {
       format = 'VST2';
+    } else if (classID.toLowerCase().startsWith('{4155') || classID.toLowerCase().startsWith('{4175')) {
+      format = 'Audio Unit (AU)';
     }
     return { name, classID, format };
   });
@@ -902,7 +959,7 @@ function buildWorkspaceIndex(baseDir) {
 
 // Endpoint: get missing media clips status and scan workspace for relocations
 app.get('/api/media-relink-status', (req, res) => {
-  const { songPath, customSearchDir } = req.query;
+  const { songPath, customSearchDir, scanSplice } = req.query;
   if (!songPath || !fs.existsSync(songPath)) {
     return res.status(404).json({ error: 'Song file not found.' });
   }
@@ -955,6 +1012,36 @@ app.get('/api/media-relink-status', (req, res) => {
             index.get(key).push(p);
           }
         });
+      }
+    }
+
+    // Index Splice Library if requested
+    if (scanSplice === 'true') {
+      const homeDir = os.homedir();
+      const spliceCandidates = [
+        path.join(homeDir, 'Documents', 'Splice'),
+        path.join(homeDir, 'Splice'),
+        path.join(homeDir, 'OneDrive', 'Splice'),
+        path.join(homeDir, 'OneDrive', 'Documents', 'Splice'),
+        path.join(homeDir, 'OneDrive - Personal', 'Splice'),
+        path.join(homeDir, 'OneDrive - Personal', 'Documents', 'Splice'),
+        'D:\\Splice',
+        'G:\\Splice'
+      ];
+      for (const candidate of spliceCandidates) {
+        if (fs.existsSync(candidate)) {
+          const spliceIndex = buildWorkspaceIndex(candidate);
+          for (const [key, paths] of spliceIndex.entries()) {
+            if (!index.has(key)) {
+              index.set(key, []);
+            }
+            paths.forEach(p => {
+              if (!index.get(key).includes(p)) {
+                index.get(key).push(p);
+              }
+            });
+          }
+        }
       }
     }
 
@@ -1451,6 +1538,65 @@ app.post('/api/convert-version', (req, res) => {
   }
 });
 
+// 9b. Convert S1 song sample rate
+app.post('/api/convert-sample-rate', (req, res) => {
+  const { songPath, targetSampleRate } = req.body;
+  if (!songPath || !fs.existsSync(songPath)) {
+    return res.status(404).json({ error: 'Song file not found.' });
+  }
+  if (!targetSampleRate || isNaN(targetSampleRate)) {
+    return res.status(400).json({ error: 'Valid target sample rate required.' });
+  }
+
+  try {
+    const projectDir = path.dirname(songPath);
+    
+    // 1. Create a backup snapshot in History/
+    const historyDir = path.join(projectDir, 'History');
+    if (!fs.existsSync(historyDir)) {
+      fs.mkdirSync(historyDir, { recursive: true });
+    }
+
+    const date = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timestamp = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+    const baseName = path.basename(songPath, '.song');
+    const backupName = `${baseName} ${timestamp} (Before Sample Rate Convert to ${targetSampleRate}Hz).song`;
+    const backupPath = path.join(historyDir, backupName);
+    
+    fs.copyFileSync(songPath, backupPath);
+    console.log(`Created sample rate conversion backup at: ${backupPath}`);
+
+    // 2. Open ZIP and modify metainfo.xml and Song/song.xml
+    const zip = new AdmZip(songPath);
+    
+    // Modify metainfo.xml
+    const metainfoEntry = zip.getEntry('metainfo.xml');
+    if (metainfoEntry) {
+      let xml = metainfoEntry.getData().toString('utf8');
+      xml = xml.replace(/(<Attribute\s+id="Media:SampleRate"\s+value=")\d+(")/g, `$1${targetSampleRate}$2`);
+      zip.updateFile('metainfo.xml', Buffer.from(xml, 'utf8'));
+    }
+
+    // Modify Song/song.xml
+    const songEntry = zip.getEntry('Song/song.xml');
+    if (songEntry) {
+      let xml = songEntry.getData().toString('utf8');
+      xml = xml.replace(/(<Attributes\s+x:id="timeContext"[^>]*?sampleRate=")\d+(")/g, `$1${targetSampleRate}$2`);
+      xml = xml.replace(/(<Attributes\s+[^>]*?sampleRate=")\d+("[^>]*?x:id="timeContext")/g, `$1${targetSampleRate}$2`);
+      zip.updateFile('Song/song.xml', Buffer.from(xml, 'utf8'));
+    }
+
+    // Write changes back to the ZIP
+    zip.writeZip(songPath);
+
+    res.json({ success: true, backupName, targetSampleRate });
+  } catch (err) {
+    console.error('Error converting S1 sample rate:', err);
+    res.status(500).json({ error: `Failed to convert project sample rate: ${err.message}` });
+  }
+});
+
 // 10. Project History Timeline
 app.get('/api/project-history', (req, res) => {
   const { projectDir } = req.query;
@@ -1812,6 +1958,505 @@ app.post('/api/clean-midi-clips', (req, res) => {
     res.status(500).json({ error: `Failed to clean MIDI clips: ${err.message}` });
   }
 });
+
+// 15. List all Impact XT preset files in the user's Studio One Presets folder
+app.get('/api/impact-presets', (req, res) => {
+  const username = os.userInfo().username;
+  const homeDir = os.homedir();
+  
+  const candidates = [
+    // 1. Try relative to active WORKSPACE_DIR
+    path.join(WORKSPACE_DIR, 'Presets', 'PreSonus', 'Impact'),
+    path.join(path.dirname(WORKSPACE_DIR), 'Presets', 'PreSonus', 'Impact'),
+    path.join(path.dirname(WORKSPACE_DIR), 'Studio One', 'Presets', 'PreSonus', 'Impact'),
+    path.join(path.dirname(path.dirname(WORKSPACE_DIR)), 'Studio One', 'Presets', 'PreSonus', 'Impact'),
+    
+    // 2. Try standard Locations on D: and C: drives
+    path.join('D:', 'Documents', 'Studio One', 'Presets', 'PreSonus', 'Impact'),
+    path.join('D:', 'Users', username, 'Documents', 'Studio One', 'Presets', 'PreSonus', 'Impact'),
+    path.join(homeDir, 'Documents', 'Studio One', 'Presets', 'PreSonus', 'Impact'),
+    path.join('C:', 'Documents', 'Studio One', 'Presets', 'PreSonus', 'Impact'),
+  ];
+
+  let presetDir = null;
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+      presetDir = candidate;
+      break;
+    }
+  }
+
+  if (!presetDir) {
+    return res.json({ presets: [], message: 'Impact presets folder not found.' });
+  }
+
+  const presets = [];
+  try {
+    function walk(dir) {
+      const items = fs.readdirSync(dir);
+      items.forEach(item => {
+        const fullPath = path.join(dir, item);
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          walk(fullPath);
+        } else if (stat.isFile() && item.endsWith('.preset')) {
+          presets.push({
+            name: item.replace('.preset', ''),
+            path: fullPath,
+            relPath: path.relative(presetDir, fullPath)
+          });
+        }
+      });
+    }
+    walk(presetDir);
+  } catch (e) {
+    console.error("Error reading presets directory:", e);
+  }
+
+  res.json({ presets });
+});
+
+// 16. Load details of a specific Impact XT preset file
+app.get('/api/load-impact-preset', (req, res) => {
+  const { presetPath } = req.query;
+  if (!presetPath || !fs.existsSync(presetPath)) {
+    return res.status(404).json({ error: 'Preset file not found.' });
+  }
+
+  try {
+    const zip = new AdmZip(presetPath);
+    const entry = zip.getEntry('data.fxpreset');
+    if (!entry) {
+      throw new Error('data.fxpreset entry not found in the preset archive.');
+    }
+
+    const xmlText = entry.getData().toString('utf8');
+    const pads = [];
+    const padBlockRegex = /<DrumPad\s+([^>]*?)>([\s\S]*?)<\/DrumPad>|<DrumPad\s+([^>]*?)\/>/g;
+    
+    let match;
+    while ((match = padBlockRegex.exec(xmlText)) !== null) {
+      const attribsStr = match[1] || match[3] || '';
+      const content = match[2] || '';
+      
+      const labelMatch = attribsStr.match(/label="([^"]*)"/);
+      const lonoteMatch = attribsStr.match(/lonote="([^"]+)"/);
+      const muteMatch = attribsStr.match(/mute="([^"]+)"/);
+      const soloMatch = attribsStr.match(/solo="([^"]+)"/);
+      const playmodeMatch = attribsStr.match(/playmode="([^"]+)"/);
+
+      if (lonoteMatch) {
+        const lonote = parseInt(lonoteMatch[1], 10);
+        const label = labelMatch ? labelMatch[1] : '';
+        const mute = muteMatch ? muteMatch[1] === '1' : false;
+        const solo = soloMatch ? soloMatch[1] === '1' : false;
+        const playmode = playmodeMatch ? parseInt(playmodeMatch[1], 10) : 1;
+
+        const sampleUrls = [];
+        const urlRegex = /url="([^"]+)"/gi;
+        let urlMatch;
+        while ((urlMatch = urlRegex.exec(content)) !== null) {
+          let url = urlMatch[1];
+          if (url.startsWith('file:///')) {
+            url = decodeURIComponent(url.replace('file:///', ''));
+          }
+          sampleUrls.push(url);
+        }
+
+        pads.push({
+          label,
+          note: lonote,
+          mute,
+          solo,
+          playmode,
+          samples: sampleUrls
+        });
+      }
+    }
+
+    pads.sort((a, b) => a.note - b.note);
+    res.json({ success: true, pads });
+  } catch (err) {
+    console.error("Error loading impact preset:", err);
+    res.status(500).json({ error: `Failed to load preset: ${err.message}` });
+  }
+});
+
+// Endpoint to check existence of multiple file paths
+app.post('/api/check-files-existence', (req, res) => {
+  const { paths } = req.body;
+  if (!paths || !Array.isArray(paths)) {
+    return res.status(400).json({ error: 'Paths list is required.' });
+  }
+  const results = {};
+  paths.forEach(p => {
+    if (!p) return;
+    try {
+      results[p] = fs.existsSync(p);
+    } catch (e) {
+      results[p] = false;
+    }
+  });
+  res.json({ results });
+});
+
+// 17. Save edited drum pads back into the Impact XT preset file
+app.post('/api/save-impact-preset', (req, res) => {
+  const { presetPath, pads } = req.body;
+  if (!presetPath || !fs.existsSync(presetPath)) {
+    return res.status(404).json({ error: 'Preset file not found.' });
+  }
+  if (!pads || !Array.isArray(pads)) {
+    return res.status(400).json({ error: 'Pads list is required.' });
+  }
+
+  try {
+    const zip = new AdmZip(presetPath);
+    const entry = zip.getEntry('data.fxpreset');
+    if (!entry) {
+      throw new Error('data.fxpreset entry not found in the preset archive.');
+    }
+
+    const xmlText = entry.getData().toString('utf8');
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, 'text/xml');
+
+    const drumPadNodes = doc.getElementsByTagName('DrumPad');
+    for (let i = 0; i < drumPadNodes.length; i++) {
+      const node = drumPadNodes[i];
+      const lonoteAttr = node.getAttribute('lonote');
+      if (lonoteAttr) {
+        const noteVal = parseInt(lonoteAttr, 10);
+        const padData = pads.find(p => p.note === noteVal);
+        if (padData) {
+          node.setAttribute('label', padData.label || '');
+          node.setAttribute('mute', padData.mute ? '1' : '0');
+          node.setAttribute('solo', padData.solo ? '1' : '0');
+          if (padData.playmode !== undefined) {
+            node.setAttribute('playmode', String(padData.playmode));
+          }
+          
+          // Completely recreate child nodes for sample layers
+          while (node.hasChildNodes()) {
+            node.removeChild(node.lastChild);
+          }
+          
+          if (padData.samples && padData.samples.length > 0) {
+            const listLayers = doc.createElement('List');
+            listLayers.setAttribute('x:id', 'Layers');
+            
+            padData.samples.forEach(samplePath => {
+              const layer = doc.createElement('DrumPadLayer');
+              layer.setAttribute('sample.start', '0');
+              layer.setAttribute('sample.end', '0');
+              layer.setAttribute('sample.loopStart', '0');
+              layer.setAttribute('sample.loopEnd', '0');
+              layer.setAttribute('sample.loopCount', '0');
+              layer.setAttribute('sample.sampleRate', '44100');
+              layer.setAttribute('sample.originalPitch', '60');
+              layer.setAttribute('sample.pitchCorrection', '0');
+              layer.setAttribute('lovel', '0');
+              layer.setAttribute('hivel', '1000');
+              layer.setAttribute('clip', '');
+              layer.setAttribute('stretchFactor', '0');
+              
+              const listPath = doc.createElement('List');
+              listPath.setAttribute('x:id', 'path');
+              
+              const urlNode = doc.createElement('Url');
+              urlNode.setAttribute('type', '1');
+              const cleanUrl = 'file:///' + samplePath.replace(/\\/g, '/');
+              urlNode.setAttribute('url', cleanUrl);
+              
+              listPath.appendChild(urlNode);
+              layer.appendChild(listPath);
+              listLayers.appendChild(layer);
+            });
+            node.appendChild(listLayers);
+          }
+        }
+      }
+    }
+
+    const serializer = new XMLSerializer();
+    let updatedXml = serializer.serializeToString(doc);
+    
+    zip.updateFile('data.fxpreset', Buffer.from(updatedXml, 'utf8'));
+    zip.writeZip(presetPath);
+
+    res.json({ success: true, presetPath });
+  } catch (err) {
+    console.error("Error saving impact preset:", err);
+    res.status(500).json({ error: `Failed to save preset: ${err.message}` });
+  }
+});
+
+
+const VALHALLA_VST3_TEMPLATE = Buffer.from(
+  '56535433010000003536353335343736363536353333373636313643363836313643364336313736' +
+  'ca030000000000005673745700000008000000010000000043636e4b000002e64642436800000002' +
+  '76656533000200020000000000000000000000000000000000000000000000000000000000000000' +
+  '00000000000000000000000000000000000000000000000000000000000000000000000000000000' +
+  '00000000000000000000000000000000000000000000000000000000000000000000000000000000' +
+  '0000000000000000000000000000000000000000024e56433221090200003c56616c68616c6c6156' +
+  '696e746167655665726220706c7567696e56657273696f6e3d22322e302e3222207072657365744e' +
+  '616d653d2244656661756c7422204d69783d22302e33343030303030303335373632373836383635' +
+  '32222050726544656c61793d22302e3235222044656361793d22302e343230343830333130393136' +
+  '3930303633343737222053697a653d2231222041747461636b3d22302e352220426173734d756c74' +
+  '3d22302e3632333033383736383736383331303534363838222042617373586f7665723d22302e34' +
+  '343437303131303533353632313634333036362220486967685368656c663d223022204869676846' +
+  '7265713d22302e3522204561726c79446966667573696f6e3d223122204c61746544696666757369' +
+  '6f6e3d223122204d6f64526174653d22302e32343534353435363436393035383939303437392220' +
+  '4d6f6444657074683d22302e33373939393939353233313632383431373937222048696768437574' +
+  '3d22302e353930353338383539333637333730363035343722204c6f774375743d22302220436f6c' +
+  '6f724d6f64653d22302e33333333333333343236373434303739353922205265766572624d6f6465' +
+  '3d22302e30343136363636363739303834333030393934383722206d69784c6f636b3d2230222075' +
+  '6957696474683d22393335222075694865696768743d22343335222f3e0000000000000000004a55' +
+  '4345507269766174654461746100010142797061737300010103001d000000000000004a55434550' +
+  '72697661746544617461efbbbf3c3f786d6c2076657273696f6e3d22312e302220656e636f64696e' +
+  '673d225554462d38223f3e0d0a3c4d657461496e666f3e0d0a093c4174747269627574652069643d' +
+  '2256535433556e697175654944222076616c75653d22353635333534373636353635333337363631' +
+  '36433638363136433643363137362220747970653d22737472696e67222f3e0d0a3c2f4d65746149' +
+  '6e666f3e0d0a4c69737403000000436f6d703000000000000000fe02000000000000436f6e742e03' +
+  '0000000000000000000000000000496e666f2e030000000000009c00000000000000',
+  'hex'
+);
+
+// 18. Utility: Valhalla Mix Reset (Convert VST2 v1.x state to VST3-compatible vstpreset format)
+app.post('/api/utility/fix-valhalla-mix', (req, res) => {
+  const { songPath } = req.body;
+  if (!songPath || !fs.existsSync(songPath)) {
+    return res.status(404).json({ error: 'Song file not found.' });
+  }
+
+  try {
+    // Create backup
+    const backupPath = songPath + '.backup-' + Date.now();
+    fs.copyFileSync(songPath, backupPath);
+
+    const zip = new AdmZip(songPath);
+    const mixerEntry = zip.getEntry('Devices/audiomixer.xml');
+    if (!mixerEntry) {
+      return res.status(404).json({ error: 'audiomixer.xml not found inside song archive.' });
+    }
+
+    let mixerXml = mixerEntry.getData().toString('utf8');
+    let hadBom = false;
+    if (mixerXml.charCodeAt(0) === 0xFEFF) {
+      mixerXml = mixerXml.slice(1);
+      hadBom = true;
+    }
+    const firstAngle = mixerXml.indexOf('<');
+    let prefixJunk = '';
+    if (firstAngle > 0) {
+      prefixJunk = mixerXml.slice(0, firstAngle);
+      mixerXml = mixerXml.slice(firstAngle);
+    }
+
+    if (!mixerXml.includes('xmlns:x=')) {
+      const match = mixerXml.match(/<([A-Za-z0-9_:-]+)/);
+      if (match) {
+        const rootTag = match[1];
+        mixerXml = mixerXml.replace(`<${rootTag}`, `<${rootTag} xmlns:x="http://presonus.com"`);
+      }
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(mixerXml, 'text/xml');
+
+    const inserts = doc.getElementsByTagName('Attributes');
+    let modifiedCount = 0;
+
+    for (let i = 0; i < inserts.length; i++) {
+      const node = inserts[i];
+      const classID = node.getAttribute('classID');
+      const name = node.getAttribute('name');
+
+      // Check for Valhalla Vintage Verb VST2 insert
+      if (classID === '{56535476-6565-3376-616C-68616C6C6176}' && name === 'ValhallaVintageVerb_x64') {
+        const parent = node.parentNode;
+        if (parent && parent.getAttribute('presetType') === 'fxb') {
+          const grandparent = parent.parentNode;
+          const presetPathNode = grandparent ? grandparent.getElementsByTagName('String') : [];
+          let presetPath = '';
+          let presetPathElem = null;
+
+          for (let k = 0; k < presetPathNode.length; k++) {
+            if (presetPathNode[k].getAttribute('x:id') === 'presetPath') {
+              presetPath = presetPathNode[k].getAttribute('text');
+              presetPathElem = presetPathNode[k];
+              break;
+            }
+          }
+
+          if (presetPath && presetPathElem) {
+            const fxbEntry = zip.getEntry(presetPath);
+            if (fxbEntry) {
+              const fxbBuffer = fxbEntry.getData();
+              const fxbContent = fxbBuffer.toString('utf8');
+
+              const xmlMatch = fxbContent.match(/<ValhallaVintageVerb[^>]+>/);
+              if (xmlMatch) {
+                const v2Xml = xmlMatch[0];
+
+                // Extract VST2 attributes
+                const attrs = {};
+                const attrRegex = /([a-zA-Z0-9_-]+)="([^"]+)"/g;
+                let attrMatch;
+                while ((attrMatch = attrRegex.exec(v2Xml)) !== null) {
+                  attrs[attrMatch[1]] = attrMatch[2];
+                }
+
+                // Build VST3 XML string
+                let v3Xml = '<ValhallaVintageVerb pluginVersion="2.0.2" presetName="Default"';
+                for (const [key, val] of Object.entries(attrs)) {
+                  if (key !== 'pluginVersion' && key !== 'presetName') {
+                    v3Xml += ` ${key}="${val}"`;
+                  }
+                }
+                v3Xml += '/>';
+
+                // Pad the XML string with spaces so it has the exact template length (519 bytes)
+                if (v3Xml.length < 519) {
+                  const pad = ' '.repeat(519 - v3Xml.length);
+                  v3Xml = v3Xml.replace('/>', pad + '/>');
+                } else if (v3Xml.length > 519) {
+                  v3Xml = v3Xml.slice(0, 517) + '/>';
+                }
+
+                // Create VST3 preset buffer from template
+                const vstpresetBuffer = Buffer.from(VALHALLA_VST3_TEMPLATE);
+                vstpresetBuffer.write(v3Xml, 230, 'utf8');
+
+                // Determine new preset path inside the song zip
+                const newPresetPath = presetPath.replace('.fxb', '.vstpreset');
+
+                // Add the new vstpreset file and delete the old fxb
+                zip.addFile(newPresetPath, vstpresetBuffer);
+                zip.deleteFile(presetPath);
+
+                // Update XML nodes in audiomixer.xml
+                node.setAttribute('name', 'ValhallaVintageVerb');
+                parent.setAttribute('presetType', 'vstpreset');
+                presetPathElem.setAttribute('text', newPresetPath);
+
+                const deviceData = grandparent.getElementsByTagName('Attributes');
+                for (let d = 0; d < deviceData.length; d++) {
+                  if (deviceData[d].getAttribute('x:id') === 'deviceData') {
+                    deviceData[d].setAttribute('name', 'ValhallaVintageVerb');
+                  }
+                }
+
+                modifiedCount++;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (modifiedCount > 0) {
+      const serializer = new XMLSerializer();
+      let updatedMixerXml = serializer.serializeToString(doc);
+      if (hadBom) {
+        updatedMixerXml = '\uFEFF' + prefixJunk + updatedMixerXml;
+      } else if (prefixJunk) {
+        updatedMixerXml = prefixJunk + updatedMixerXml;
+      }
+
+      zip.updateFile('Devices/audiomixer.xml', Buffer.from(updatedMixerXml, 'utf8'));
+      zip.writeZip(songPath);
+      res.json({ success: true, message: `Successfully translated and fixed ${modifiedCount} legacy Valhalla Vintage Verb VST2 instances.`, backupCreated: true });
+    } else {
+      res.json({ success: false, message: 'No legacy Valhalla Vintage Verb VST2 instances (v1.0.0) found in this project.' });
+    }
+  } catch (err) {
+    console.error('Error applying Valhalla mix fix:', err);
+    res.status(500).json({ error: `Failed to apply fix: ${err.message}` });
+  }
+});
+
+// 19. Utility: Unmute / Unsolo All Channels
+app.post('/api/utility/reset-mute-solo', (req, res) => {
+  const { songPath } = req.body;
+  if (!songPath || !fs.existsSync(songPath)) {
+    return res.status(404).json({ error: 'Song file not found.' });
+  }
+
+  try {
+    // Create backup
+    const backupPath = songPath + '.backup-' + Date.now();
+    fs.copyFileSync(songPath, backupPath);
+
+    const zip = new AdmZip(songPath);
+    const entry = zip.getEntry('Devices/audiomixer.xml');
+    if (!entry) {
+      return res.status(404).json({ error: 'audiomixer.xml not found inside song archive.' });
+    }
+
+    let xmlText = entry.getData().toString('utf8');
+    
+    let hadBom = false;
+    if (xmlText.charCodeAt(0) === 0xFEFF) {
+      xmlText = xmlText.slice(1);
+      hadBom = true;
+    }
+    const firstAngle = xmlText.indexOf('<');
+    let prefixJunk = '';
+    if (firstAngle > 0) {
+      prefixJunk = xmlText.slice(0, firstAngle);
+      xmlText = xmlText.slice(firstAngle);
+    }
+
+    if (!xmlText.includes('xmlns:x=')) {
+      const match = xmlText.match(/<([A-Za-z0-9_:-]+)/);
+      if (match) {
+        const rootTag = match[1];
+        xmlText = xmlText.replace(`<${rootTag}`, `<${rootTag} xmlns:x="http://presonus.com"`);
+      }
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, 'text/xml');
+
+    const channelTags = ['AudioOutputChannel', 'AudioGroupChannel', 'AudioSynthChannel', 'AudioTrackChannel'];
+    let resetCount = 0;
+
+    channelTags.forEach(tag => {
+      const channels = doc.getElementsByTagName(tag);
+      for (let i = 0; i < channels.length; i++) {
+        const chan = channels[i];
+        const mute = chan.getAttribute('mute');
+        const solo = chan.getAttribute('solo');
+        if (mute === '1' || solo === '1') {
+          chan.setAttribute('mute', '0');
+          chan.setAttribute('solo', '0');
+          resetCount++;
+        }
+      }
+    });
+
+    if (resetCount > 0) {
+      const serializer = new XMLSerializer();
+      let updatedXml = serializer.serializeToString(doc);
+      if (hadBom) {
+        updatedXml = '\uFEFF' + prefixJunk + updatedXml;
+      } else if (prefixJunk) {
+        updatedXml = prefixJunk + updatedXml;
+      }
+      
+      zip.updateFile('Devices/audiomixer.xml', Buffer.from(updatedXml, 'utf8'));
+      zip.writeZip(songPath);
+      res.json({ success: true, message: `Successfully reset mute and solo states on ${resetCount} mixer channels.`, backupCreated: true });
+    } else {
+      res.json({ success: false, message: 'All channels are already unmuted and unsoloed.' });
+    }
+  } catch (err) {
+    console.error('Error resetting mute/solo:', err);
+    res.status(500).json({ error: `Failed to reset: ${err.message}` });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Studio One Analyzer backend running on http://localhost:${PORT}`);

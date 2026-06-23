@@ -49,3 +49,4 @@ GEMINI.md
 .env
 .env.*
 !.env.example
+tmp

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 export default function MediaRelinker({ songPath, projectDir }) {
   const [missingClips, setMissingClips] = useState([]);
   const [customSearchDir, setCustomSearchDir] = useState('');
+  const [scanSplice, setScanSplice] = useState(false);
   const [relinkMap, setRelinkMap] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isRelinking, setIsRelinking] = useState(false);
@@ -10,7 +11,7 @@ export default function MediaRelinker({ songPath, projectDir }) {
   const [error, setError] = useState('');
 
   // Fetch missing clips on load
-  const loadMissingClips = (searchDir = '') => {
+  const loadMissingClips = (searchDir = '', useSplice = scanSplice) => {
     setIsLoading(true);
     setError('');
     setMessage('');
@@ -18,6 +19,9 @@ export default function MediaRelinker({ songPath, projectDir }) {
     let url = `http://localhost:3001/api/media-relink-status?songPath=${encodeURIComponent(songPath)}`;
     if (searchDir) {
       url += `&customSearchDir=${encodeURIComponent(searchDir)}`;
+    }
+    if (useSplice) {
+      url += `&scanSplice=true`;
     }
 
     fetch(url)
@@ -50,7 +54,7 @@ export default function MediaRelinker({ songPath, projectDir }) {
   };
 
   useEffect(() => {
-    loadMissingClips();
+    loadMissingClips(customSearchDir, scanSplice);
   }, [songPath]);
 
   // Folder browser triggers native popup via server
@@ -149,25 +153,51 @@ export default function MediaRelinker({ songPath, projectDir }) {
         </p>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '6px', border: '1px solid var(--border-clean)' }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: 600 }}>
-              Scan Workspace & Custom Search Directory
-            </label>
-            <input
-              type="text"
-              value={customSearchDir}
-              onChange={(e) => setCustomSearchDir(e.target.value)}
-              placeholder="Workspace root is scanned by default. Set custom search path here..."
-              style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-primary)', color: 'white', border: '1px solid var(--border-clean)', borderRadius: '4px', fontSize: '0.85rem', outline: 'none' }}
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '6px', border: '1px solid var(--border-clean)' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: 600 }}>
+                Scan Workspace & Custom Search Directory
+              </label>
+              <input
+                type="text"
+                value={customSearchDir}
+                onChange={(e) => setCustomSearchDir(e.target.value)}
+                placeholder="Workspace root is scanned by default. Set custom search path here..."
+                style={{ width: '100%', padding: '0.55rem', background: 'var(--bg-primary)', color: 'white', border: '1px solid var(--border-clean)', borderRadius: '4px', fontSize: '0.85rem', outline: 'none' }}
+              />
+            </div>
+            <button onClick={handleBrowseSearchDir} className="btn-secondary" style={{ height: '38px', marginTop: '1.25rem', whiteSpace: 'nowrap' }}>
+              📁 Browse Folder...
+            </button>
+            <button onClick={() => loadMissingClips(customSearchDir)} className="btn-secondary" style={{ height: '38px', marginTop: '1.25rem', whiteSpace: 'nowrap' }} disabled={isLoading}>
+              {isLoading ? 'Scanning...' : '🔄 Scan Links'}
+            </button>
           </div>
-          <button onClick={handleBrowseSearchDir} className="btn-secondary" style={{ height: '38px', marginTop: '1.25rem', whiteSpace: 'nowrap' }}>
-            📁 Browse Folder...
-          </button>
-          <button onClick={() => loadMissingClips(customSearchDir)} className="btn-secondary" style={{ height: '38px', marginTop: '1.25rem', whiteSpace: 'nowrap' }} disabled={isLoading}>
-            {isLoading ? 'Scanning...' : '🔄 Scan Links'}
-          </button>
+
+          {/* Splice Integration Checkbox */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.8rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              <input
+                type="checkbox"
+                checked={scanSplice}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  setScanSplice(val);
+                  loadMissingClips(customSearchDir, val);
+                }}
+                style={{
+                  cursor: 'pointer',
+                  width: '15px',
+                  height: '15px',
+                  accentColor: 'var(--accent-cyan)'
+                }}
+              />
+              <span style={{ color: scanSplice ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontWeight: scanSplice ? 600 : 400, transition: 'color 0.2s ease' }}>
+                🔗 Scan Splice Library (Auto-crawl sample downloads from Documents/Splice)
+              </span>
+            </label>
+          </div>
         </div>
       </div>
 

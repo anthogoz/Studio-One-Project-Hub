@@ -4,6 +4,7 @@ export default function ProjectCleaner({ parsedData, projectDir, songName, songP
   const { audioClips } = parsedData;
   const [diskFiles, setDiskFiles] = useState([]);
   const [unusedFiles, setUnusedFiles] = useState([]);
+  const [protectedFiles, setProtectedFiles] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [backupFiles, setBackupFiles] = useState([]);
   const [selectedBackupFiles, setSelectedBackupFiles] = useState([]);
@@ -15,7 +16,7 @@ export default function ProjectCleaner({ parsedData, projectDir, songName, songP
   const [error, setError] = useState('');
 
   // 2. Compare files on disk with media pool
-  function compareFiles(onDisk) {
+  function compareFiles(onDisk, usedMediaAcrossVersions = []) {
     // Media pool files (filenames)
     const poolMap = new Map();
     audioClips.forEach(clip => {
@@ -23,22 +24,37 @@ export default function ProjectCleaner({ parsedData, projectDir, songName, songP
     });
 
     const unused = [];
+    const protectedList = [];
+    
     onDisk.forEach(f => {
       const name = f.name;
+      const nameLower = name.toLowerCase();
       const count = poolMap.has(name) ? poolMap.get(name) : 0;
       
-      // If it's not in the pool OR it has 0 use count, it's unused
+      const isReferencedInVersions = usedMediaAcrossVersions.includes(nameLower);
+
+      // If it's not in the pool OR it has 0 use count in current song
       if (!poolMap.has(name) || count === 0) {
-        unused.push({
-          name,
-          size: f.size,
-          mtime: f.mtime,
-          status: !poolMap.has(name) ? 'Orphan (Not in Pool)' : '0 Use Count'
-        });
+        if (isReferencedInVersions) {
+          protectedList.push({
+            name,
+            size: f.size,
+            mtime: f.mtime,
+            status: 'Used in History Snapshots'
+          });
+        } else {
+          unused.push({
+            name,
+            size: f.size,
+            mtime: f.mtime,
+            status: !poolMap.has(name) ? 'Orphan (Not in Pool)' : '0 Use Count'
+          });
+        }
       }
     });
 
     setUnusedFiles(unused);
+    setProtectedFiles(protectedList);
     // Auto select all unused files by default
     setSelectedFiles(unused.map(u => u.name));
   }
@@ -52,7 +68,7 @@ export default function ProjectCleaner({ parsedData, projectDir, songName, songP
         setIsLoading(false);
         if (data.filesOnDisk) {
           setDiskFiles(data.filesOnDisk);
-          compareFiles(data.filesOnDisk);
+          compareFiles(data.filesOnDisk, data.usedMediaAcrossVersions || []);
         }
         if (data.filesInBackup) {
           setBackupFiles(data.filesInBackup);
@@ -394,6 +410,43 @@ export default function ProjectCleaner({ parsedData, projectDir, songName, songP
                   Files will be moved, not deleted permanently.
                 </span>
               </div>
+
+              {protectedFiles.length > 0 && (
+                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-clean)', paddingTop: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <span style={{ fontSize: '1.1rem' }}>🛡️</span>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'white' }}>
+                      Protected History Files ({protectedFiles.length})
+                    </h4>
+                    <span style={{ fontSize: '0.75rem', color: '#c084fc', background: 'rgba(168, 85, 247, 0.1)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
+                      Version History Safety Enabled
+                    </span>
+                  </div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '1rem', lineHeight: '1.4' }}>
+                    These files are not used in the current version of the project, but are referenced by older snapshots or backups in your <code>History/</code> folder. They are automatically protected from deletion.
+                  </p>
+                  <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-clean)', borderRadius: '6px', background: 'rgba(0,0,0,0.1)' }}>
+                    <table className="premium-table" style={{ marginTop: 0, fontSize: '0.8rem' }}>
+                      <thead>
+                        <tr>
+                          <th>File Name</th>
+                          <th>Size</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {protectedFiles.map((file, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{file.name}</td>
+                            <td>{formatSize(file.size)}</td>
+                            <td style={{ color: '#c084fc' }}>{file.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )
         )}
