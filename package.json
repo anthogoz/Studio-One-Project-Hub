@@ -1,6 +1,6 @@
 {
   "name": "studio-one-project-hub",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A powerful desktop companion app for PreSonus Studio One — analyze projects, visualize mixer routing, manage plugins, relink missing media, build articulation maps, and more.",
   "author": "anthogoz",
   "license": "MIT",
