@@ -16,9 +16,54 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // support large XML payloads
 
-// Workspace root — mutable, persisted to config file
-const CONFIG_FILE = path.join(__dirname, 'workspace-config.json');
-const CACHE_FILE = path.join(__dirname, 'workspace-cache.json');
+// Writable AppData Directory for config files (persists in packaged Electron app)
+const USER_DATA_DIR = (() => {
+  const homeDir = os.homedir();
+  let appDataPath;
+  if (process.platform === 'win32') {
+    appDataPath = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
+  } else if (process.platform === 'darwin') {
+    appDataPath = path.join(homeDir, 'Library', 'Application Support');
+  } else {
+    appDataPath = process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
+  }
+  
+  const targetDir = path.join(appDataPath, 'studio-one-project-hub');
+  try {
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    return targetDir;
+  } catch (e) {
+    console.error('Failed to create settings directory, falling back to home dir:', e);
+    return homeDir;
+  }
+})();
+
+const CONFIG_FILE = path.join(USER_DATA_DIR, 'workspace-config.json');
+const CACHE_FILE = path.join(USER_DATA_DIR, 'workspace-cache.json');
+
+// Migrate existing configuration from local folder to USER_DATA_DIR if present
+const OLD_CONFIG_FILE = path.join(__dirname, 'workspace-config.json');
+const OLD_CACHE_FILE = path.join(__dirname, 'workspace-cache.json');
+
+if (fs.existsSync(OLD_CONFIG_FILE) && !fs.existsSync(CONFIG_FILE)) {
+  try {
+    fs.copyFileSync(OLD_CONFIG_FILE, CONFIG_FILE);
+    console.log('Migrated configuration file to:', CONFIG_FILE);
+  } catch (e) {
+    console.error('Failed to migrate config file:', e);
+  }
+}
+
+if (fs.existsSync(OLD_CACHE_FILE) && !fs.existsSync(CACHE_FILE)) {
+  try {
+    fs.copyFileSync(OLD_CACHE_FILE, CACHE_FILE);
+    console.log('Migrated cache file to:', CACHE_FILE);
+  } catch (e) {
+    console.error('Failed to migrate cache file:', e);
+  }
+}
 
 function getDefaultWorkspace() {
   const username = os.userInfo().username;
