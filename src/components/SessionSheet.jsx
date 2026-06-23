@@ -84,7 +84,7 @@ export default function SessionSheet({ parsedData }) {
       <div className="glass-card">
         
         {/* Header toolbar (Hidden during print) */}
-        <div style={{ 
+        <div className="no-print" style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 

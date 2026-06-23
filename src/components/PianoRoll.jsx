@@ -541,11 +541,10 @@ export default function PianoRoll({ songPath, parsedData }) {
               borderRadius: '6px', 
               overflow: 'auto',
               maxHeight: '450px',
-              background: '#0d0d0f',
+              background: 'rgba(0, 0, 0, 0.3)',
               width: '100%',
               maxWidth: '100%'
             }}>
-              
               {/* Keyboard Guide (Left Column) Sticky */}
               <div style={{ 
                 width: '60px', 
@@ -553,19 +552,22 @@ export default function PianoRoll({ songPath, parsedData }) {
                 position: 'sticky', 
                 left: 0, 
                 zIndex: 10,
-                background: '#121214',
+                background: 'var(--bg-primary)',
                 borderRight: '2px solid var(--border-clean)'
               }}>
                 {pitchRange.map((pitch, idx) => {
                   const isBlack = [1, 3, 6, 8, 10].includes(pitch % 12);
+                  const isC = pitch % 12 === 0;
                   return (
                     <div
                       key={idx}
                       style={{
                         height: `${rowHeight}px`,
-                        background: isBlack ? '#18181b' : '#ffffff',
-                        color: isBlack ? '#a1a1aa' : '#18181b',
-                        borderBottom: '1px solid #27272a',
+                        background: isBlack ? '#151726' : '#dedede',
+                        color: isBlack ? '#707f9c' : '#1a1d2e',
+                        borderBottom: isBlack ? '1px solid #0c0d17' : '1px solid #b5b5b5',
+                        borderLeft: isBlack ? 'none' : '4px solid #ffffff',
+                        boxShadow: isBlack ? 'inset 0 0 4px rgba(0, 0, 0, 0.5)' : 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'flex-end',
@@ -575,7 +577,7 @@ export default function PianoRoll({ songPath, parsedData }) {
                         userSelect: 'none'
                       }}
                     >
-                      {getNoteName(pitch)}
+                      {isC ? getNoteName(pitch) : ''}
                     </div>
                   );
                 })}
@@ -589,21 +591,24 @@ export default function PianoRoll({ songPath, parsedData }) {
               }}>
                 
                 {/* Horizontal Grid lines */}
-                {pitchRange.map((pitch, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: `${idx * rowHeight}px`,
-                      width: '100%',
-                      height: `${rowHeight}px`,
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-                      background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent',
-                      pointerEvents: 'none'
-                    }}
-                  />
-                ))}
+                {pitchRange.map((pitch, idx) => {
+                  const isBlackRow = [1, 3, 6, 8, 10].includes(pitch % 12);
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: `${idx * rowHeight}px`,
+                        width: '100%',
+                        height: `${rowHeight}px`,
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.02)',
+                        background: isBlackRow ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.01)',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  );
+                })}
 
                 {/* Vertical Beat grid lines */}
                 {Array.from({ length: maxBeats }).map((_, beatIdx) => (
@@ -648,8 +653,9 @@ export default function PianoRoll({ songPath, parsedData }) {
                         width: `${width}px`,
                         height: `${height}px`,
                         borderRadius: '3px',
-                        background: `rgba(255, 255, 255, ${opacity})`,
-                        border: '1px solid var(--accent-primary)',
+                        background: `rgba(0, 162, 255, ${opacity * 0.75})`,
+                        border: '1px solid rgba(0, 162, 255, 0.95)',
+                        borderLeft: '3px solid #ffffff',
                         cursor: 'pointer',
                         transition: 'transform 0.15s ease'
                       }}

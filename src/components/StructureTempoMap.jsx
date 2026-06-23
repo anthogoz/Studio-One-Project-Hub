@@ -73,18 +73,16 @@ export default function StructureTempoMap({ songXmlDoc, parsedData }) {
   // Color generator for marker blocks
   const getMarkerColor = (name) => {
     const lowerName = name.toLowerCase();
-    if (lowerName.includes('intro')) return '#52525b'; // Zinc 600
-    if (lowerName.includes('verse') || lowerName.includes('couplet')) return '#27272a'; // Zinc 800
-    if (lowerName.includes('chorus') || lowerName.includes('refrain')) return 'white'; // White
-    if (lowerName.includes('bridge') || lowerName.includes('pont')) return '#3f3f46'; // Zinc 700
-    if (lowerName.includes('solo')) return '#71717a';
-    return '#18181b'; // Default dark card bg
+    if (lowerName.includes('intro')) return 'rgba(99, 102, 241, 0.3)'; // Indigo
+    if (lowerName.includes('verse') || lowerName.includes('couplet')) return 'rgba(59, 130, 246, 0.3)'; // Blue
+    if (lowerName.includes('chorus') || lowerName.includes('refrain')) return 'rgba(236, 72, 153, 0.3)'; // Pink
+    if (lowerName.includes('bridge') || lowerName.includes('pont')) return 'rgba(245, 158, 11, 0.3)'; // Amber
+    if (lowerName.includes('solo')) return 'rgba(16, 185, 129, 0.3)'; // Emerald
+    return 'rgba(255, 255, 255, 0.08)'; // Default subtle grey
   };
 
   const getMarkerTextColor = (name) => {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes('chorus') || lowerName.includes('refrain')) return '#09090b';
-    return 'white';
+    return '#ffffff';
   };
 
   return (
@@ -129,7 +127,7 @@ export default function StructureTempoMap({ songXmlDoc, parsedData }) {
             <div style={{ 
               position: 'relative', 
               height: '60px', 
-              background: '#09090b', 
+              background: 'rgba(0, 0, 0, 0.2)', 
               borderRadius: '6px', 
               border: '1px solid var(--border-clean)', 
               overflow: 'hidden',
@@ -191,7 +189,7 @@ export default function StructureTempoMap({ songXmlDoc, parsedData }) {
             📈 Master Tempo Envelope (BPM changes)
           </h4>
 
-          <div style={{ background: '#09090b', border: '1px solid var(--border-clean)', borderRadius: '6px', padding: '1.5rem 1rem' }}>
+          <div style={{ background: 'rgba(0, 0, 0, 0.2)', border: '1px solid var(--border-clean)', borderRadius: '6px', padding: '1.5rem 1rem' }}>
             {/* Draw a basic line plot of the BPM curve */}
             <svg viewBox="0 0 1000 150" width="100%" height="150" style={{ overflow: 'visible' }}>
               {/* Grid lines */}
@@ -232,7 +230,7 @@ export default function StructureTempoMap({ songXmlDoc, parsedData }) {
                       <path
                         d={pathD}
                         fill="none"
-                        stroke="white"
+                        stroke="var(--accent-primary)"
                         strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -244,7 +242,7 @@ export default function StructureTempoMap({ songXmlDoc, parsedData }) {
                         const y = getY(s.bpm);
                         return (
                           <g key={idx}>
-                            <circle cx={x} cy={y} r="4" fill="white" stroke="#09090b" strokeWidth="1" />
+                            <circle cx={x} cy={y} r="4" fill="var(--accent-primary)" stroke="var(--bg-primary)" strokeWidth="1" />
                             <text x={x} y={y - 10} fill="var(--text-secondary)" fontSize="10" textAnchor="middle" fontFamily="monospace">
                               {s.bpm} BPM
                             </text>

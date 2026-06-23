@@ -20,13 +20,13 @@ export default function PerformanceHub({ songXmlDoc, parsedData, songPath }) {
             onClick={() => setActiveSubTab('pianoroll')}
             className="btn-secondary"
             style={{
-              background: activeSubTab === 'pianoroll' ? 'white' : 'transparent',
-              color: activeSubTab === 'pianoroll' ? 'black' : 'var(--text-secondary)',
-              border: activeSubTab === 'pianoroll' ? '1px solid white' : '1px solid var(--border-clean)',
+              background: activeSubTab === 'pianoroll' ? 'var(--accent-muted)' : 'transparent',
+              color: activeSubTab === 'pianoroll' ? 'white' : 'var(--text-secondary)',
+              border: activeSubTab === 'pianoroll' ? '1px solid var(--accent-primary)' : '1px solid var(--border-clean)',
               fontWeight: 600,
               fontSize: '0.85rem',
               padding: '0.4rem 1rem',
-              borderRadius: '4px'
+              borderRadius: '6px'
             }}
           >
             🎹 Piano Roll / MIDI Clips
@@ -35,13 +35,13 @@ export default function PerformanceHub({ songXmlDoc, parsedData, songPath }) {
             onClick={() => setActiveSubTab('automation')}
             className="btn-secondary"
             style={{
-              background: activeSubTab === 'automation' ? 'white' : 'transparent',
-              color: activeSubTab === 'automation' ? 'black' : 'var(--text-secondary)',
-              border: activeSubTab === 'automation' ? '1px solid white' : '1px solid var(--border-clean)',
+              background: activeSubTab === 'automation' ? 'var(--accent-muted)' : 'transparent',
+              color: activeSubTab === 'automation' ? 'white' : 'var(--text-secondary)',
+              border: activeSubTab === 'automation' ? '1px solid var(--accent-primary)' : '1px solid var(--border-clean)',
               fontWeight: 600,
               fontSize: '0.85rem',
               padding: '0.4rem 1rem',
-              borderRadius: '4px'
+              borderRadius: '6px'
             }}
           >
             📈 Automation Curves

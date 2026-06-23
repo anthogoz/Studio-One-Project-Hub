@@ -4,31 +4,24 @@
   --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Sober Minimalist Palette */
-  --bg-primary: #09090b;
-  /* Matte Black */
-  --bg-secondary: #18181b;
-  /* Zinc 900 Card BG */
-  --bg-tertiary: #27272a;
-  /* Zinc 800 Elements */
+  /* Studio One Premium Dark-Slate Palette */
+  --bg-primary: #07090e;                      /* Darkest slate black */
+  --bg-secondary: rgba(18, 22, 38, 0.55);      /* Frosted slate card BG */
+  --bg-tertiary: rgba(30, 36, 61, 0.7);       /* Hover states, sub-inputs */
+  --sidebar-bg: rgba(9, 11, 19, 0.85);        /* Sleek sidebar transparent background */
 
-  --accent-primary: #ffffff;
-  /* Crisp White */
-  --accent-muted: #e4e4e7;
-  /* Zinc 200 */
+  --accent-primary: #00a2ff;                  /* Vibrant Studio One cyan-blue */
+  --accent-hover: #33b5ff;
+  --accent-muted: rgba(0, 162, 255, 0.15);    /* Muted accent for backgrounds */
 
-  --text-primary: #f4f4f5;
-  /* Zinc 100 */
-  --text-secondary: #a1a1aa;
-  /* Zinc 400 */
-  --text-muted: #52525b;
-  /* Zinc 600 */
+  --text-primary: #f8fafc;                    /* Slate 50 */
+  --text-secondary: #94a3b8;                  /* Slate 400 */
+  --text-muted: #475569;                      /* Slate 600 */
 
-  --border-clean: #27272a;
-  /* Subdued solid borders */
-  --border-focus: #3f3f46;
+  --border-clean: rgba(255, 255, 255, 0.05);   /* Thin clean borders */
+  --border-focus: rgba(0, 162, 255, 0.35);    /* Focus state glowing border */
 
-  --shadow-flat: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-flat: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 * {
@@ -38,7 +31,8 @@
 }
 
 body {
-  background-color: var(--bg-primary);
+  background: linear-gradient(180deg, #111526 0%, #06080d 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -78,7 +72,9 @@ body {
 .sidebar {
   width: 220px;
   flex-shrink: 0;
-  background: var(--bg-secondary);
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-right: 1px solid var(--border-clean);
   display: flex;
   flex-direction: column;
@@ -94,7 +90,7 @@ body {
   font-weight: 800;
   font-size: 0.95rem;
   /* Adjusted from 1.1rem to fit Studio One Project Hub */
-  color: var(--accent-primary);
+  color: #ffffff;
   letter-spacing: -0.5px;
   border-bottom: 1px solid var(--border-clean);
   display: flex;
@@ -111,16 +107,16 @@ body {
 
 .sidebar-project {
   padding: 0.75rem 1rem;
-  background: var(--bg-primary);
+  background: rgba(0, 0, 0, 0.15);
   border-bottom: 1px solid var(--border-clean);
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .sidebar-project strong {
   display: block;
-  color: var(--text-secondary);
+  color: #ffffff;
   font-size: 0.8rem;
   margin-top: 2px;
   white-space: nowrap;
@@ -152,6 +148,7 @@ body {
   border-radius: 6px;
   background: transparent;
   border: none;
+  border-left: 3px solid transparent;
   color: var(--text-secondary);
   font-family: var(--font-body);
   font-weight: 500;
@@ -164,13 +161,16 @@ body {
 }
 
 .nav-tab:hover {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .nav-tab.active {
-  color: var(--bg-primary);
-  background: var(--accent-primary);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--accent-primary);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
   font-weight: 600;
 }
 
@@ -202,8 +202,10 @@ body {
 /* Minimalist Flat Cards */
 .glass-card {
   background: var(--bg-secondary);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-clean);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 1.5rem;
   box-shadow: var(--shadow-flat);
   transition: border-color 0.15s ease;
@@ -226,12 +228,12 @@ body {
 
 /* Premium Buttons */
 .btn-primary {
-  background: var(--accent-primary);
-  color: var(--bg-primary);
+  background: rgba(0, 162, 255, 0.12);
+  color: #ffffff;
   font-weight: 600;
-  border: 1px solid var(--accent-primary);
+  border: 1px solid rgba(0, 162, 255, 0.45);
   padding: 0.5rem 1.2rem;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
   transition: all 0.15s ease;
@@ -239,8 +241,8 @@ body {
 }
 
 .btn-primary:hover {
-  background: var(--bg-primary);
-  color: var(--accent-primary);
+  background: rgba(0, 162, 255, 0.22);
+  border-color: var(--accent-primary);
 }
 
 .btn-primary:disabled {
@@ -253,7 +255,7 @@ body {
   color: var(--text-primary);
   border: 1px solid var(--border-clean);
   padding: 0.5rem 1.2rem;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
   transition: all 0.15s ease;
@@ -261,7 +263,7 @@ body {
 }
 
 .btn-secondary:hover {
-  background: var(--border-clean);
+  background: rgba(255, 255, 255, 0.1);
   border-color: var(--text-secondary);
 }
 
@@ -338,40 +340,137 @@ body {
 
 /* Print Overrides for Session Sheet */
 @media print {
-  body {
+  /* Reset document and containers to flow naturally on standard paper (A4 / Letter) */
+  html,
+  body,
+  .app-container,
+  main.content-area,
+  div[style*="overflowY: auto"],
+  div[style*="overflow-y: auto"],
+  div[style*="overflow: auto"] {
+    display: block !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
     background: white !important;
     color: black !important;
+    box-shadow: none !important;
   }
 
-  .header,
-  .nav-tabs,
+  /* Hide sidebar and all other screen-only UI components */
+  aside,
+  .sidebar,
+  .no-print,
+  button,
   .btn-primary,
   .btn-secondary,
   .btn-danger {
     display: none !important;
   }
 
-  .content-area {
-    padding: 0 !important;
-    max-width: 100% !important;
+  /* Hide other direct dashboard/content-area layout siblings that are not the session sheet modal */
+  .content-area > div > div > *:not(.session-sheet-modal-overlay) {
+    display: none !important;
   }
 
-  .glass-card {
-    background: white !important;
-    border: 1px solid #ccc !important;
-    color: black !important;
+  /* Reset the fixed fullscreen modal overlay to act as a standard inline flow block */
+  .session-sheet-modal-overlay {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    z-index: auto !important;
+  }
+
+  /* Reset modal card styling to fill the printed page naturally */
+  .session-sheet-modal-card {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: transparent !important;
+    border: none !important;
     box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  /* Flatten all glass-cards inside printable content */
+  .glass-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure text elements default to solid black for high contrast readability */
+  #session-sheet-print-content,
+  #session-sheet-print-content h1,
+  #session-sheet-print-content h3,
+  #session-sheet-print-content span,
+  #session-sheet-print-content div,
+  #session-sheet-print-content td,
+  #session-sheet-print-content th {
+    color: black !important;
+    background: transparent !important;
+    text-shadow: none !important;
+  }
+
+  /* Preserve lighter color for muted/bypassed/secondary items */
+  #session-sheet-print-content [style*="var(--text-secondary)"],
+  #session-sheet-print-content [style*="text-secondary"] {
+    color: #555555 !important;
+  }
+
+  #session-sheet-print-content [style*="var(--text-muted)"],
+  #session-sheet-print-content [style*="opacity: 0.6"],
+  #session-sheet-print-content [style*="opacity:0.6"] {
+    color: #7f8c8d !important;
+  }
+
+  /* Premium table print style adjustments */
+  .premium-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 1rem !important;
+    color: black !important;
   }
 
   .premium-table th {
-    background: #f0f0f0 !important;
+    background: #f1f5f9 !important;
     color: black !important;
-    border-bottom: 1px solid #ccc !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
   }
 
   .premium-table td {
     color: black !important;
-    border-bottom: 1px solid #eee !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Page breaks optimization for tables */
+  .premium-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 

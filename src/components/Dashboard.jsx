@@ -235,7 +235,7 @@ export default function Dashboard({ parsedData, currentProject, xmls }) {
 
       {/* 4. Fullscreen Modal for Printable Session Sheet */}
       {showSessionSheet && (
-        <div style={{
+        <div className="session-sheet-modal-overlay" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -249,7 +249,7 @@ export default function Dashboard({ parsedData, currentProject, xmls }) {
           alignItems: 'center',
           padding: '2rem'
         }}>
-          <div className="glass-card" style={{
+          <div className="glass-card session-sheet-modal-card" style={{
             width: '90%',
             maxWidth: '1200px',
             height: '90%',
@@ -261,7 +261,7 @@ export default function Dashboard({ parsedData, currentProject, xmls }) {
             flexDirection: 'column'
           }}>
             {/* Modal close button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem' }}>
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem' }}>
               <button 
                 onClick={() => setShowSessionSheet(false)}
                 style={{
