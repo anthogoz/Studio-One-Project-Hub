@@ -49,6 +49,7 @@
     "appId": "com.s1tools.projecthub",
     "productName": "Studio One Project Hub",
     "copyright": "Copyright © 2024-2025 anthogoz",
+    "icon": "public/icon.png",
     "directories": {
       "output": "release"
     },
@@ -65,8 +66,7 @@
           "target": "nsis",
           "arch": ["x64"]
         }
-      ],
-      "icon": "public/icon.ico"
+      ]
     },
     "mac": {
       "target": [
@@ -75,7 +75,6 @@
           "arch": ["x64", "arm64"]
         }
       ],
-      "icon": "public/icon.icns",
       "category": "public.app-category.music"
     },
     "linux": {
@@ -85,7 +84,6 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "public/icon.png",
       "category": "AudioVideo"
     },
     "nsis": {
