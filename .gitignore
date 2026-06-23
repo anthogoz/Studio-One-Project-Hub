@@ -43,6 +43,7 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 *.local
+GEMINI.md
 
 # ── Environment secrets ───────────────────────────
 .env

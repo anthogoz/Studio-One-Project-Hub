@@ -24,11 +24,13 @@
     "electron:build:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
+    "@xmldom/xmldom": "^0.9.10",
     "adm-zip": "^0.5.16",
-    "cors": "^2.8.5",
-    "express": "^4.21.2",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
