@@ -187,7 +187,7 @@ export default function ProjectBrowser({ onProjectSelected, isLoading }) {
           justifyContent: 'center',
           gap: '0.75rem'
         }}>
-          <img src="/icon.png" alt="Logo" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+          <img src="./icon.png" alt="Logo" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
           <span>Studio One Project Hub</span>
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem' }}>

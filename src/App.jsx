@@ -424,7 +424,7 @@ export default function App() {
       <aside className="sidebar">
         {/* Logo */}
         <div className="sidebar-logo">
-          <img src="/icon.png" alt="Logo" className="logo-img" />
+          <img src="./icon.png" alt="Logo" className="logo-img" />
           <span>Studio One Project Hub</span>
         </div>
 
