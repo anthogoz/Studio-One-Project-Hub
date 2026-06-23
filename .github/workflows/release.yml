@@ -32,9 +32,7 @@ jobs:
         run: npm run build
 
       - name: Package Electron app (Windows)
-        run: npm run electron:build:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish never
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -66,9 +64,9 @@ jobs:
         run: npm run build
 
       - name: Package Electron app (macOS)
-        run: npm run electron:build:mac
+        run: npx electron-builder --mac --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
@@ -100,9 +98,7 @@ jobs:
         run: npm run build
 
       - name: Package Electron app (Linux)
-        run: npm run electron:build:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --linux --publish never
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4

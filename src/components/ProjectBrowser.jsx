@@ -182,8 +182,13 @@ export default function ProjectBrowser({ onProjectSelected, isLoading }) {
         <h1 style={{
           fontFamily: 'var(--font-heading)', fontSize: '3rem', fontWeight: 800,
           marginBottom: '1rem', color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.75rem'
         }}>
-          🌀 Studio One Project Hub
+          <img src="/icon.png" alt="Logo" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+          <span>Studio One Project Hub</span>
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem' }}>
           Analyze, clean up, and generate templates from your Studio One projects.

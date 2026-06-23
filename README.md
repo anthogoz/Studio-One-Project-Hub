@@ -1,8 +1,8 @@
-# 🌀 Studio One Project Hub
+# <img src="media/icon.png" width="36" height="36" align="center" /> Studio One Project Hub
 
 > A powerful desktop companion app for **PreSonus Studio One** — analyze, visualize, clean, and maintain your music projects without ever opening the DAW.
 
-![Version](https://img.shields.io/badge/version-1.0.0--beta-orange?style=flat-square)
+[![Version](https://img.shields.io/github/v/release/anthogoz/Studio-One-Project-Hub?style=flat-square)](https://github.com/anthogoz/Studio-One-Project-Hub/releases)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square)
 
 ---

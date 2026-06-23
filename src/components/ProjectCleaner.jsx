@@ -14,6 +14,35 @@ export default function ProjectCleaner({ parsedData, projectDir, songName, songP
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  // 2. Compare files on disk with media pool
+  function compareFiles(onDisk) {
+    // Media pool files (filenames)
+    const poolMap = new Map();
+    audioClips.forEach(clip => {
+      poolMap.set(clip.name, clip.use_count);
+    });
+
+    const unused = [];
+    onDisk.forEach(f => {
+      const name = f.name;
+      const count = poolMap.has(name) ? poolMap.get(name) : 0;
+      
+      // If it's not in the pool OR it has 0 use count, it's unused
+      if (!poolMap.has(name) || count === 0) {
+        unused.push({
+          name,
+          size: f.size,
+          mtime: f.mtime,
+          status: !poolMap.has(name) ? 'Orphan (Not in Pool)' : '0 Use Count'
+        });
+      }
+    });
+
+    setUnusedFiles(unused);
+    // Auto select all unused files by default
+    setSelectedFiles(unused.map(u => u.name));
+  }
+
   // 1. Fetch files on disk & backup files
   const loadMediaStatus = () => {
     setIsLoading(true);
@@ -60,34 +89,7 @@ export default function ProjectCleaner({ parsedData, projectDir, songName, songP
     loadMidiStatus();
   }, [projectDir, songPath]);
 
-  // 2. Compare files on disk with media pool
-  const compareFiles = (onDisk) => {
-    // Media pool files (filenames)
-    const poolMap = new Map();
-    audioClips.forEach(clip => {
-      poolMap.set(clip.name, clip.use_count);
-    });
 
-    const unused = [];
-    onDisk.forEach(f => {
-      const name = f.name;
-      const count = poolMap.has(name) ? poolMap.get(name) : 0;
-      
-      // If it's not in the pool OR it has 0 use count, it's unused
-      if (!poolMap.has(name) || count === 0) {
-        unused.push({
-          name,
-          size: f.size,
-          mtime: f.mtime,
-          status: !poolMap.has(name) ? 'Orphan (Not in Pool)' : '0 Use Count'
-        });
-      }
-    });
-
-    setUnusedFiles(unused);
-    // Auto select all unused files by default
-    setSelectedFiles(unused.map(u => u.name));
-  };
 
   const handleCheckboxChange = (name) => {
     if (selectedFiles.includes(name)) {
