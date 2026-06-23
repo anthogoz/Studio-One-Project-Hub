@@ -4,6 +4,7 @@
 
 [![Version](https://img.shields.io/github/v/release/anthogoz/Studio-One-Project-Hub?style=flat-square)](https://github.com/anthogoz/Studio-One-Project-Hub/releases)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square)
+[![License](https://img.shields.io/github/license/anthogoz/Studio-One-Project-Hub?style=flat-square)](https://github.com/anthogoz/Studio-One-Project-Hub/blob/master/LICENSE)
 
 ---
 
