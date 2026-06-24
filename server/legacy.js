@@ -136,70 +136,72 @@ function scanProjects(baseDir) {
       if (depth > 3) return;
       try {
         const items = fs.readdirSync(dir);
-        let songFile = items.find(f => f.endsWith('.song'));
-        if (songFile) {
-          const songPath = path.join(dir, songFile);
-          try {
-            const stat = fs.statSync(songPath);
-            const mtime = stat.mtime.getTime();
-            const size = stat.size;
-            
-            let trackCount = 0;
-            let pluginCount = 0;
-            
-            const cached = PROJECT_CACHE[songPath];
-            if (cached && cached.mtime === mtime && cached.size === size) {
-              trackCount = cached.trackCount;
-              pluginCount = cached.pluginCount;
-            } else {
-              try {
-                const zip = new AdmZip(songPath);
-                const metainfoEntry = zip.getEntry('metainfo.xml');
-                if (metainfoEntry) {
-                  const text = metainfoEntry.getData().toString('utf8');
-                  const tcMatch = text.match(/id="Media:TrackCount"\s+value="(\d+)"/);
-                  if (tcMatch) trackCount = parseInt(tcMatch[1], 10);
-                }
-                const mixerEntry = zip.getEntry('Devices/audiomixer.xml');
-                if (mixerEntry) {
-                  const mixerText = mixerEntry.getData().toString('utf8');
-                  const matches = mixerText.match(/classID=/g);
-                  pluginCount = matches ? matches.length : 0;
-                }
-              } catch (e) {
-                // ignore zip reading errors
-              }
+        const songFiles = items.filter(f => f.endsWith('.song'));
+        if (songFiles.length > 0) {
+          songFiles.forEach(songFile => {
+            const songPath = path.join(dir, songFile);
+            try {
+              const stat = fs.statSync(songPath);
+              const mtime = stat.mtime.getTime();
+              const size = stat.size;
               
-              PROJECT_CACHE[songPath] = { mtime, size, trackCount, pluginCount };
-              cacheUpdated = true;
-            }
+              let trackCount = 0;
+              let pluginCount = 0;
+              
+              const cached = PROJECT_CACHE[songPath];
+              if (cached && cached.mtime === mtime && cached.size === size) {
+                trackCount = cached.trackCount;
+                pluginCount = cached.pluginCount;
+              } else {
+                try {
+                  const zip = new AdmZip(songPath);
+                  const metainfoEntry = zip.getEntry('metainfo.xml');
+                  if (metainfoEntry) {
+                    const text = metainfoEntry.getData().toString('utf8');
+                    const tcMatch = text.match(/id="Media:TrackCount"\s+value="(\d+)"/);
+                    if (tcMatch) trackCount = parseInt(tcMatch[1], 10);
+                  }
+                  const mixerEntry = zip.getEntry('Devices/audiomixer.xml');
+                  if (mixerEntry) {
+                    const mixerText = mixerEntry.getData().toString('utf8');
+                    const matches = mixerText.match(/classID=/g);
+                    pluginCount = matches ? matches.length : 0;
+                  }
+                } catch (e) {
+                  // ignore zip reading errors
+                }
+                
+                PROJECT_CACHE[songPath] = { mtime, size, trackCount, pluginCount };
+                cacheUpdated = true;
+              }
 
-            projects.push({
-              name: path.basename(dir),
-              dirPath: dir,
-              songPath: songPath,
-              songName: songFile,
-              mtime,
-              size,
-              trackCount,
-              pluginCount
-            });
-          } catch (e) {
-            // fallback if stat fails
-            projects.push({
-              name: path.basename(dir),
-              dirPath: dir,
-              songPath: songPath,
-              songName: songFile,
-              mtime: 0,
-              size: 0,
-              trackCount: 0,
-              pluginCount: 0
-            });
-          }
+              projects.push({
+                name: songFile.replace(/\.song$/i, ''),
+                dirPath: dir,
+                songPath: songPath,
+                songName: songFile,
+                mtime,
+                size,
+                trackCount,
+                pluginCount
+              });
+            } catch (e) {
+              // fallback if stat fails
+              projects.push({
+                name: songFile.replace(/\.song$/i, ''),
+                dirPath: dir,
+                songPath: songPath,
+                songName: songFile,
+                mtime: 0,
+                size: 0,
+                trackCount: 0,
+                pluginCount: 0
+              });
+            }
+          });
         } else {
           for (const item of items) {
-            if (item.startsWith('.') || item === 'node_modules' || item === 'System Volume Information' || item === 'Backup_Unused_Media') continue;
+            if (item.startsWith('.') || item === 'node_modules' || item === 'System Volume Information' || item === 'History' || item === 'Backup_Unused_Media') continue;
             const itemPath = path.join(dir, item);
             try {
               if (fs.statSync(itemPath).isDirectory()) {
