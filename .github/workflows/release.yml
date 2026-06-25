@@ -164,10 +164,9 @@ jobs:
         with:
           tag_name: ${{ steps.versioning.outputs.tag }}
           name: "Studio One Project Hub ${{ steps.versioning.outputs.tag }}"
+          generate_release_notes: true
           body: |
-            ${{ github.event.inputs.notes }}
-
-            ## 🌀 Studio One Project Hub ${{ steps.versioning.outputs.tag }}
+            ${{ github.event.inputs.notes != '' && format('{0}\n\n', github.event.inputs.notes) || '' }}## 🌀 Studio One Project Hub ${{ steps.versioning.outputs.tag }}
 
             A powerful companion app for **PreSonus Studio One** — analyze, visualize, and maintain your music projects directly from a desktop UI.
 
